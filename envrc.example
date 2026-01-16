@@ -28,10 +28,16 @@ export GITHUB_DEFAULT_REPOS="openshift/hypershift"
 # Dashboard configurations (JSON array)
 export GITHUB_DASHBOARDS='[
   {
-    "id": "bots",
-    "name": "Bot PRs",
+    "id": "dependency-bots",
+    "name": "Dependency Bots",
     "repos": "openshift/hypershift",
     "filter": "states=open&branches=main&authors=dependabot[bot],red-hat-konflux[bot],renovate[bot]"
+  },
+  {
+    "id": "jira-solve",
+    "name": "Jira Solve",
+    "repos": "openshift/hypershift",
+    "filter": "states=open&branches=main&authors=hypershift-jira-solve-ci[bot]"
   },
   {
     "id": "hypershift-operator",

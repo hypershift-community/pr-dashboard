@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { ColumnConfig, ColumnId } from '../types';
+import { useEffect } from 'react';
+import type { ColumnConfig } from '../types';
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'number', label: '#', visible: true, order: 0, width: 80, sortable: true },
@@ -9,7 +9,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'repository', label: 'Repository', visible: true, order: 2, width: 200, sortable: true },
   { id: 'author', label: 'Author', visible: true, order: 3, width: 150, sortable: true },
   { id: 'state', label: 'Status', visible: true, order: 4, width: 100, sortable: true },
-  { id: 'age', label: 'Age', visible: true, order: 5, width: 100, sortable: true },
+  { id: 'age', label: 'Created', visible: true, order: 5, width: 180, sortable: true },
   { id: 'labels', label: 'Labels', visible: true, order: 6, width: 200 },
   { id: 'assignees', label: 'Assignees', visible: false, order: 7, width: 150 },
   { id: 'reviewers', label: 'Reviewers', visible: false, order: 8, width: 150 },
@@ -19,87 +19,21 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { id: 'changes', label: 'Changes', visible: false, order: 12, width: 120 },
 ];
 
-const STORAGE_KEY = 'pr-dashboard-column-config';
-
-// Merge saved columns with defaults, adding any new columns that don't exist
-function mergeColumnsWithDefaults(saved: ColumnConfig[]): ColumnConfig[] {
-  const savedIds = new Set(saved.map((col) => col.id));
-  const merged = [...saved];
-
-  // Add any new default columns that aren't in the saved config
-  for (const defaultCol of DEFAULT_COLUMNS) {
-    if (!savedIds.has(defaultCol.id)) {
-      merged.push(defaultCol);
-    }
-  }
-
-  // Re-sort by order
-  return merged.sort((a, b) => a.order - b.order);
-}
+const LEGACY_STORAGE_KEY = 'pr-dashboard-column-config';
 
 interface UseColumnConfigResult {
   columns: ColumnConfig[];
-  updateColumn: (id: ColumnId, updates: Partial<ColumnConfig>) => void;
-  resetColumns: () => void;
-  toggleColumnVisibility: (id: ColumnId) => void;
-  reorderColumns: (fromIndex: number, toIndex: number) => void;
 }
 
 export function useColumnConfig(): UseColumnConfigResult {
-  const [columns, setColumns] = useState<ColumnConfig[]>(() => {
-    // Load columns from localStorage on initial mount
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Merge with defaults to add any new columns
-          return mergeColumnsWithDefaults(parsed);
-        } catch (error) {
-          console.error('Failed to parse saved column config:', error);
-        }
-      }
-    }
-    return DEFAULT_COLUMNS;
-  });
-
-  // Save columns to localStorage whenever they change
+  // Clean up any previously stored column config from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(columns));
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
     }
-  }, [columns]);
-
-  const updateColumn = (id: ColumnId, updates: Partial<ColumnConfig>) => {
-    setColumns((prev) => prev.map((col) => (col.id === id ? { ...col, ...updates } : col)));
-  };
-
-  const resetColumns = () => {
-    setColumns(DEFAULT_COLUMNS);
-  };
-
-  const toggleColumnVisibility = (id: ColumnId) => {
-    setColumns((prev) =>
-      prev.map((col) => (col.id === id ? { ...col, visible: !col.visible } : col))
-    );
-  };
-
-  const reorderColumns = (fromIndex: number, toIndex: number) => {
-    setColumns((prev) => {
-      const newColumns = [...prev];
-      const [movedColumn] = newColumns.splice(fromIndex, 1);
-      newColumns.splice(toIndex, 0, movedColumn);
-
-      // Update order property
-      return newColumns.map((col, index) => ({ ...col, order: index }));
-    });
-  };
+  }, []);
 
   return {
-    columns,
-    updateColumn,
-    resetColumns,
-    toggleColumnVisibility,
-    reorderColumns,
+    columns: DEFAULT_COLUMNS,
   };
 }

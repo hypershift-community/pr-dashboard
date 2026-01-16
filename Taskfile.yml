@@ -158,13 +158,11 @@ tasks:
       - cmd: gum style --border normal --padding "0 1" --border-foreground 212 "Deploying Application"
         silent: true
       - cmd: |
-          if [ -n "{{.DEPLOYMENT_EXISTS}}" ]; then
-            gum format "○ Deployment exists, triggering rollout..."
-            oc set image deployment/{{.APP_NAME}} {{.APP_NAME}}={{.IMAGE}} -n {{.NAMESPACE}}
-            oc rollout restart deployment/{{.APP_NAME}} -n {{.NAMESPACE}}
-          else
+          gum format "○ Tagging image to imagestream..."
+          # oc tag {{.IMAGE}} {{.APP_NAME}}:latest -n {{.NAMESPACE}}
+          if [ -z "{{.DEPLOYMENT_EXISTS}}" ]; then
             gum format "○ Creating new deployment..."
-            oc new-app {{.IMAGE}} --name={{.APP_NAME}} -n {{.NAMESPACE}}
+            oc new-app -i {{.APP_NAME}}:latest --name={{.APP_NAME}} --allow-missing-imagestream-tags --allow-missing-images -n {{.NAMESPACE}}
           fi
         silent: true
       - cmd: gum format "✓ Deployment updated"
@@ -270,6 +268,7 @@ tasks:
       - oc delete route {{.APP_NAME}}-custom -n {{.NAMESPACE}} --ignore-not-found
       - oc delete deployment {{.APP_NAME}} -n {{.NAMESPACE}} --ignore-not-found
       - oc delete service {{.APP_NAME}} -n {{.NAMESPACE}} --ignore-not-found
+      - oc delete imagestream {{.APP_NAME}} -n {{.NAMESPACE}} --ignore-not-found
       - oc delete configmap {{.APP_NAME}}-config -n {{.NAMESPACE}} --ignore-not-found
       - oc delete secret {{.APP_NAME}}-secrets -n {{.NAMESPACE}} --ignore-not-found
       - cmd: gum style --border normal --padding "0 1" --border-foreground 10 "Cleanup Complete"
