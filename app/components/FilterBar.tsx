@@ -2,13 +2,24 @@
 
 import type { FilterOptions, Label } from '../types';
 
+interface Author {
+  login: string;
+  avatarUrl: string;
+}
+
 interface FilterBarProps {
   filters: Partial<FilterOptions>;
   availableLabels: Label[];
+  availableAuthors: Author[];
   onFiltersChange: (filters: Partial<FilterOptions>) => void;
 }
 
-export function FilterBar({ filters, availableLabels, onFiltersChange }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  availableLabels,
+  availableAuthors,
+  onFiltersChange,
+}: FilterBarProps) {
   const handleStateChange = (state: FilterOptions['states'][number]) => {
     const currentStates = filters.states || [];
     const newStates = currentStates.includes(state)
@@ -25,6 +36,14 @@ export function FilterBar({ filters, availableLabels, onFiltersChange }: FilterB
     onFiltersChange({ ...filters, labels: newLabels });
   };
 
+  const handleAuthorChange = (authorLogin: string) => {
+    const currentAuthors = filters.authors || [];
+    const newAuthors = currentAuthors.includes(authorLogin)
+      ? currentAuthors.filter((a) => a !== authorLogin)
+      : [...currentAuthors, authorLogin];
+    onFiltersChange({ ...filters, authors: newAuthors });
+  };
+
   const handleSearchChange = (query: string) => {
     onFiltersChange({ ...filters, searchQuery: query });
   };
@@ -33,17 +52,21 @@ export function FilterBar({ filters, availableLabels, onFiltersChange }: FilterB
     onFiltersChange({
       states: ['open'],
       labels: [],
+      authors: [],
       searchQuery: '',
     });
   };
 
   const activeFilterCount =
-    (filters.states?.length || 0) + (filters.labels?.length || 0) + (filters.searchQuery ? 1 : 0);
+    (filters.states?.length || 0) +
+    (filters.labels?.length || 0) +
+    (filters.authors?.length || 0) +
+    (filters.searchQuery ? 1 : 0);
 
   return (
     <div className="bg-white border rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Filters</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
         {activeFilterCount > 0 && (
           <button
             type="button"
@@ -66,7 +89,7 @@ export function FilterBar({ filters, availableLabels, onFiltersChange }: FilterB
           value={filters.searchQuery || ''}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search pull requests..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
         />
       </div>
 
@@ -90,6 +113,30 @@ export function FilterBar({ filters, availableLabels, onFiltersChange }: FilterB
           ))}
         </div>
       </div>
+
+      {/* Authors Filter */}
+      {availableAuthors.length > 0 && (
+        <div>
+          <div className="block text-sm font-medium text-gray-700 mb-2">Authors</div>
+          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+            {availableAuthors.map((author) => (
+              <button
+                key={author.login}
+                type="button"
+                onClick={() => handleAuthorChange(author.login)}
+                className={`px-3 py-1 text-sm rounded-full border transition-colors flex items-center gap-1 ${
+                  filters.authors?.includes(author.login)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                }`}
+              >
+                <img src={author.avatarUrl} alt={author.login} className="w-4 h-4 rounded-full" />
+                {author.login}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Labels Filter */}
       {availableLabels.length > 0 && (

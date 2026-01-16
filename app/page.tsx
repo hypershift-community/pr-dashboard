@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { FilterBar } from './components/FilterBar';
 import { GroupedPRDisplay } from './components/GroupedPRDisplay';
 import { LabelGroupSelector } from './components/LabelGroupSelector';
@@ -9,9 +10,19 @@ import { RepositorySelector } from './components/RepositorySelector';
 import { useColumnConfig } from './hooks/useColumnConfig';
 import { usePullRequests } from './hooks/usePullRequests';
 import { useRepositories } from './hooks/useRepositories';
-import type { FilterOptions, Label } from './types';
+import { useUrlFilters } from './hooks/useUrlFilters';
+import type { Label } from './types';
+
+interface DashboardConfig {
+  id: string;
+  name: string;
+  repos: string;
+  filter: string;
+}
 
 export default function Home() {
+  const [dashboards, setDashboards] = useState<DashboardConfig[]>([]);
+  const [isLoadingDashboards, setIsLoadingDashboards] = useState(true);
   const [hasServerToken, setHasServerToken] = useState<boolean | null>(null);
   const [hasDefaultRepos, setHasDefaultRepos] = useState(false);
   const [githubToken, setGithubToken] = useState<string | null>(() => {
@@ -41,7 +52,7 @@ export default function Home() {
     }
     return [];
   });
-  const [filters, setFilters] = useState<Partial<FilterOptions>>({
+  const { filters, setFilters } = useUrlFilters({
     states: ['open'],
     labels: [],
     searchQuery: '',
@@ -69,6 +80,23 @@ export default function Home() {
     };
 
     checkServerToken();
+  }, []);
+
+  // Load dashboards from server
+  useEffect(() => {
+    const loadDashboards = async () => {
+      try {
+        const response = await fetch('/api/github/dashboards');
+        const data = await response.json();
+        setDashboards(data.dashboards || []);
+      } catch (error) {
+        console.error('Failed to load dashboards:', error);
+      } finally {
+        setIsLoadingDashboards(false);
+      }
+    };
+
+    loadDashboards();
   }, []);
 
   // Load default repositories from server
@@ -108,6 +136,7 @@ export default function Home() {
   });
 
   const {
+    pullRequests,
     filteredPullRequests,
     isLoading: isLoadingPRs,
     error: prsError,
@@ -119,6 +148,20 @@ export default function Home() {
   });
 
   const { columns } = useColumnConfig();
+
+  // Derive unique authors from all PRs
+  const availableAuthors = useMemo(() => {
+    const authorMap = new Map<string, { login: string; avatarUrl: string }>();
+    for (const pr of pullRequests) {
+      if (!authorMap.has(pr.author.login)) {
+        authorMap.set(pr.author.login, {
+          login: pr.author.login,
+          avatarUrl: pr.author.avatarUrl,
+        });
+      }
+    }
+    return Array.from(authorMap.values()).sort((a, b) => a.login.localeCompare(b.login));
+  }, [pullRequests]);
 
   // Fetch labels when repositories change
   useEffect(() => {
@@ -166,6 +209,40 @@ export default function Home() {
     setTokenInput('');
     setShowTokenInput(true);
   };
+
+  // If dashboards are configured, show dashboard selector
+  if (!isLoadingDashboards && dashboards.length > 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm">
+          <div className="px-4 sm:px-6 lg:px-8 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">PR Dashboard</h1>
+          </div>
+        </header>
+
+        <main className="px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Select a Dashboard</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dashboards.map((dashboard) => (
+                <Link
+                  key={dashboard.id}
+                  href={`/${dashboard.id}`}
+                  className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+                >
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{dashboard.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {dashboard.repos.split(',').length}{' '}
+                    {dashboard.repos.split(',').length === 1 ? 'repository' : 'repositories'}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (showTokenInput) {
     return (
@@ -259,7 +336,9 @@ export default function Home() {
           <div className="lg:col-span-1 space-y-6">
             {hasDefaultRepos ? (
               <div className="border rounded-lg p-4 bg-white">
-                <h3 className="text-lg font-semibold mb-4">Configured Repositories</h3>
+                <h3 className="text-lg font-semibold mb-4 text-gray-900">
+                  Configured Repositories
+                </h3>
                 <div className="space-y-2">
                   {selectedRepositories.map((repo) => (
                     <div key={repo} className="flex items-center p-2 bg-blue-50 rounded">
@@ -297,6 +376,7 @@ export default function Home() {
                 <FilterBar
                   filters={filters}
                   availableLabels={availableLabels}
+                  availableAuthors={availableAuthors}
                   onFiltersChange={setFilters}
                 />
 

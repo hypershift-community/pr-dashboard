@@ -1,8 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { cache, CACHE_TTL } from '@/app/lib/cache';
 import { createGitHubClient } from '@/app/lib/github';
 import { getGitHubToken } from '@/app/lib/token';
 import { transformLabel } from '@/app/types';
+
+interface CachedLabelsResponse {
+  data: ReturnType<typeof transformLabel>[];
+  total: number;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +26,13 @@ export async function GET(request: NextRequest) {
         { error: 'repositories parameter is required (comma-separated owner/repo)' },
         { status: 400 }
       );
+    }
+
+    // Check cache first
+    const cacheKey = `labels:${repositories}`;
+    const cached = cache.get<CachedLabelsResponse>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     const repoList = repositories.split(',').map((repo) => {
@@ -44,10 +57,15 @@ export async function GET(request: NextRequest) {
 
     const uniqueLabels = Array.from(labelMap.values());
 
-    return NextResponse.json({
+    const response: CachedLabelsResponse = {
       data: uniqueLabels,
       total: uniqueLabels.length,
-    });
+    };
+
+    // Cache the response
+    cache.set(cacheKey, response, CACHE_TTL.LABELS);
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching labels:', error);
 

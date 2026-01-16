@@ -73,7 +73,7 @@ export function LabelGroupSelector({
   return (
     <div className="border rounded-lg p-4 bg-white">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Group by Labels</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Group by Labels</h3>
         {selectedLabels.length > 0 && (
           <button
             type="button"

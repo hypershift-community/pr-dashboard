@@ -1,8 +1,16 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { cache, CACHE_TTL } from '@/app/lib/cache';
 import { createGitHubClient } from '@/app/lib/github';
 import { getGitHubToken } from '@/app/lib/token';
 import { transformPullRequest } from '@/app/types';
+
+interface CachedPullsResponse {
+  data: ReturnType<typeof transformPullRequest>[];
+  page: number;
+  perPage: number;
+  total: number;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +33,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check cache first
+    const cacheKey = `pulls:${repositories}:${state}:${perPage}:${page}`;
+    const cached = cache.get<CachedPullsResponse>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     const repoList = repositories.split(',').map((repo) => {
       const [owner, name] = repo.trim().split('/');
       return { owner, repo: name };
@@ -45,12 +60,17 @@ export async function GET(request: NextRequest) {
     // Sort by updated date (most recent first)
     allPullRequests.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-    return NextResponse.json({
+    const response: CachedPullsResponse = {
       data: allPullRequests,
       page,
       perPage,
       total: allPullRequests.length,
-    });
+    };
+
+    // Cache the response
+    cache.set(cacheKey, response, CACHE_TTL.PULLS);
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching pull requests:', error);
 

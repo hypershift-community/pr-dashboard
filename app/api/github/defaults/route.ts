@@ -7,7 +7,10 @@ export async function GET() {
     .map((repo) => repo.trim())
     .filter((repo) => repo.length > 0);
 
+  const defaultFilter = process.env.GITHUB_DEFAULT_FILTER || '';
+
   return NextResponse.json({
     repositories: repos,
+    filters: defaultFilter,
   });
 }

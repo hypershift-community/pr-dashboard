@@ -46,7 +46,7 @@ export function RepositorySelector({
   return (
     <div className="border rounded-lg p-4 bg-white">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Repositories</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Repositories</h3>
         <div className="flex gap-2">
           <button
             type="button"
