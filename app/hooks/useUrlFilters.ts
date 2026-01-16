@@ -1,23 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { FilterOptions, PullRequest } from '../types';
-
-type ValidState = PullRequest['state'];
-const VALID_STATES: ValidState[] = ['open', 'closed', 'merged', 'draft'];
+import type { FilterOptions } from '../types';
 
 interface UseUrlFiltersResult {
   filters: Partial<FilterOptions>;
   setFilters: (filters: Partial<FilterOptions>) => void;
   isLoading: boolean;
-}
-
-function parseStates(value: string | null): ValidState[] | undefined {
-  if (!value) return undefined;
-  const states = value
-    .split(',')
-    .filter((s): s is ValidState => VALID_STATES.includes(s as ValidState));
-  return states.length > 0 ? states : undefined;
 }
 
 function parseStringArray(value: string | null): string[] | undefined {
@@ -32,9 +21,6 @@ function parseStringArray(value: string | null): string[] | undefined {
 function filtersToSearchParams(filters: Partial<FilterOptions>): URLSearchParams {
   const params = new URLSearchParams();
 
-  if (filters.states && filters.states.length > 0) {
-    params.set('states', filters.states.join(','));
-  }
   if (filters.labels && filters.labels.length > 0) {
     params.set('labels', filters.labels.join(','));
   }
@@ -53,9 +39,6 @@ function filtersToSearchParams(filters: Partial<FilterOptions>): URLSearchParams
 
 function searchParamsToFilters(params: URLSearchParams): Partial<FilterOptions> {
   const filters: Partial<FilterOptions> = {};
-
-  const states = parseStates(params.get('states'));
-  if (states) filters.states = states;
 
   const labels = parseStringArray(params.get('labels'));
   if (labels) filters.labels = labels;
@@ -76,7 +59,6 @@ function hasUrlParams(): boolean {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
   return (
-    params.has('states') ||
     params.has('labels') ||
     params.has('branches') ||
     params.has('authors') ||
@@ -92,8 +74,8 @@ export function useUrlFilters(defaults: Partial<FilterOptions> = {}): UseUrlFilt
     if (hasUrlParams()) {
       const urlFilters = searchParamsToFilters(params);
       return {
-        states: urlFilters.states || defaults.states || [],
         labels: urlFilters.labels || defaults.labels || [],
+        branches: urlFilters.branches || defaults.branches || [],
         authors: urlFilters.authors || defaults.authors || [],
         searchQuery: urlFilters.searchQuery || defaults.searchQuery || '',
       };
@@ -117,8 +99,8 @@ export function useUrlFilters(defaults: Partial<FilterOptions> = {}): UseUrlFilt
         if (data.filters) {
           const serverFilters = searchParamsToFilters(new URLSearchParams(data.filters));
           const merged: Partial<FilterOptions> = {
-            states: serverFilters.states || defaults.states || [],
             labels: serverFilters.labels || defaults.labels || [],
+            branches: serverFilters.branches || defaults.branches || [],
             authors: serverFilters.authors || defaults.authors || [],
             searchQuery: serverFilters.searchQuery || defaults.searchQuery || '',
           };

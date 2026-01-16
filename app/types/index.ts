@@ -57,7 +57,6 @@ export interface Label {
 export interface FilterOptions {
   repositories: string[]; // Full repository names (owner/repo)
   labels: string[];
-  states: PullRequest['state'][];
   branches: string[]; // Target branches (base branch)
   assignees: string[];
   authors: string[];

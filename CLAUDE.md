@@ -6,53 +6,71 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Development
-pnpm run dev          # Start dev server at http://localhost:3000
-
-# Build
-pnpm run build        # Production build
-pnpm run start        # Run production build
-
-# Linting & Formatting (uses Biome, not ESLint directly)
-pnpm run lint         # Check linting
-pnpm run lint:fix     # Fix linting issues
-pnpm run format       # Check formatting
-pnpm run format:fix   # Fix formatting
-pnpm run check        # Run all checks
-pnpm run check:fix    # Fix all issues
+pnpm dev              # Start dev server at http://localhost:3000
+pnpm check            # Run linting & formatting checks (Biome)
+pnpm check:fix        # Fix all lint/format issues
 ```
+
+## Build & Deploy Workflow
+
+When user asks to build, push, or deploy, use these `task` commands:
+
+```bash
+task dev              # Start dev server (pnpm dev)
+task build            # Build container image (tagged with git SHA)
+task push             # Push to quay.io/abdalla/pr-dashboard
+task deploy           # Full OpenShift deploy (secrets, configmap, app, routes)
+task deploy-status    # Show deployment URLs and replica count
+task deploy-logs      # Stream pod logs
+task rollout          # Restart deployment to pick up new image
+task undeploy         # Delete all OpenShift resources
+task all              # Build → push → deploy (full workflow)
+task status           # Check image exists, oc login, deployment status
+```
+
+**Typical deployment flow:**
+1. `task build` - builds with current git SHA as tag
+2. `task push` - pushes to registry
+3. `task deploy` - deploys to OpenShift (or `task rollout` if already deployed)
+
+**Override image tag:** `IMAGE_TAG=v1.0.0 task build`
+
+**Environment:** Assumes `.envrc` is sourced (GITHUB_TOKEN, GITHUB_DASHBOARDS). If tasks fail due to missing env vars, check `.envrc` exists.
 
 ## Architecture
 
-This is a Next.js 16 App Router application (React 19, TypeScript, Tailwind CSS 4) that displays GitHub pull requests across multiple repositories.
+Next.js 16 App Router (React 19, TypeScript, Tailwind CSS 4) for displaying GitHub PRs across multiple repositories with multi-dashboard support.
 
 ### Data Flow
 
-1. **Authentication**: Token comes from either `GITHUB_TOKEN` env var (server-side) or browser localStorage (client-side)
-2. **API Layer** (`app/api/github/`): Server-side routes proxy requests to GitHub REST API
-   - `auth/` - Reports whether server has token configured
-   - `defaults/` - Returns `GITHUB_DEFAULT_REPOS` env var
-   - `repos/` - Lists user's repositories
-   - `pulls/` - Fetches PRs for selected repos
-   - `labels/` - Fetches labels for selected repos
-3. **Client Hooks** (`app/hooks/`): React hooks manage data fetching and state
-   - `useRepositories` - Fetches available repos
-   - `usePullRequests` - Fetches and filters PRs
-   - `useColumnConfig` - Manages visible columns (persisted to localStorage)
-4. **UI Components** (`app/components/`): Stateless display components
+1. **Authentication**: `GITHUB_TOKEN` env var (server-side) or browser localStorage (client-side)
+2. **API Layer** (`app/api/github/`): Server-side routes with caching (5 min PRs, 10 min labels/repos)
+   - `pulls/` - Fetches PRs with pagination, supports `?refresh=true` to bypass cache
+   - `labels/` - Fetches labels for repos
+   - `defaults/` - Returns `GITHUB_DEFAULT_REPOS` and `GITHUB_DASHBOARDS`
+3. **Hooks** (`app/hooks/`): State management
+   - `usePullRequests` - Fetches PRs, auto-fetches all pages for `open` state, exposes `refresh()` for cache bypass
+   - `useUrlFilters` - Syncs filter state to URL params
+4. **Pages**: Main page (`app/page.tsx`) and dynamic dashboards (`app/[dashboard]/page.tsx`)
 
-### Key Types (`app/types/index.ts`)
+### Key Patterns
 
-- `FilterOptions` - Filter state (states, labels, authors, searchQuery, etc.)
-- `PullRequest` - Normalized PR with computed state (open/closed/merged/draft)
-- `ColumnConfig` - Column visibility and ordering
+- **State as tabs, not filters**: PR state (open/closed/merged) is selected via `StateSelector` tabs, not filter chips
+- **Server-side caching**: `app/lib/cache.ts` with TTL-based in-memory cache, `cachedAt` timestamp returned to clients
+- **Refresh indicator**: Shows data freshness with color-coded timestamp, auto-refresh on tab focus if stale (>5 min)
 
 ### GitHub Client (`app/lib/github.ts`)
 
-`GitHubClient` class handles all GitHub API calls with proper pagination and transforms GitHub API responses to internal types.
+`GitHubClient` class handles GitHub API calls with pagination. Transforms GitHub API responses to internal `PullRequest` type.
 
 ## Environment Variables
 
 ```bash
-GITHUB_TOKEN=ghp_xxx           # Server-side token (recommended)
-GITHUB_DEFAULT_REPOS=org/repo1,org/repo2  # Pre-selected repos
+GITHUB_TOKEN=ghp_xxx                      # Required: GitHub PAT
+GITHUB_DEFAULT_REPOS=org/repo1,org/repo2  # Repos for main dashboard
+GITHUB_DASHBOARDS='[{"id":"bots","name":"Bot PRs","repos":"org/repo","filter":"authors=dependabot[bot]"}]'
 ```
+
+## Multi-Dashboard Configuration
+
+Dashboards are configured via `GITHUB_DASHBOARDS` JSON array. Each dashboard accessible at `/<id>`. Filter params: `labels`, `authors`, `branches`, `search`.

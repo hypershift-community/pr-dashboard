@@ -9,7 +9,9 @@ interface CachedPullsResponse {
   data: ReturnType<typeof transformPullRequest>[];
   page: number;
   perPage: number;
-  total: number;
+  fetchedCount: number;
+  hasMore: boolean;
+  cachedAt: number; // Timestamp when data was cached
 }
 
 export async function GET(request: NextRequest) {
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
     const state = (searchParams.get('state') as 'open' | 'closed' | 'all') || 'open';
     const perPage = Number(searchParams.get('perPage')) || 30;
     const page = Number(searchParams.get('page')) || 1;
+    const refresh = searchParams.get('refresh') === 'true';
 
     if (!repositories) {
       return NextResponse.json(
@@ -33,11 +36,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check cache first
+    // Check cache first (unless refresh requested)
     const cacheKey = `pulls:${repositories}:${state}:${perPage}:${page}`;
-    const cached = cache.get<CachedPullsResponse>(cacheKey);
-    if (cached) {
-      return NextResponse.json(cached);
+    if (!refresh) {
+      const cached = cache.get<CachedPullsResponse>(cacheKey);
+      if (cached) {
+        return NextResponse.json(cached);
+      }
     }
 
     const repoList = repositories.split(',').map((repo) => {
@@ -64,7 +69,9 @@ export async function GET(request: NextRequest) {
       data: allPullRequests,
       page,
       perPage,
-      total: allPullRequests.length,
+      fetchedCount: allPullRequests.length,
+      hasMore: allPullRequests.length === perPage,
+      cachedAt: Date.now(),
     };
 
     // Cache the response

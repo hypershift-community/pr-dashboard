@@ -43,7 +43,7 @@ export const cache = new MemoryCache();
 
 // Cache TTL constants (in seconds)
 export const CACHE_TTL = {
-  PULLS: 60, // 1 minute for pull requests
-  LABELS: 300, // 5 minutes for labels (they rarely change)
-  REPOS: 300, // 5 minutes for repository list
+  PULLS: 300, // 5 minutes for pull requests
+  LABELS: 600, // 10 minutes for labels (they rarely change)
+  REPOS: 600, // 10 minutes for repository list
 } as const;

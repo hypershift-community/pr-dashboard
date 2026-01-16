@@ -22,14 +22,6 @@ export function FilterBar({
   availableBranches,
   onFiltersChange,
 }: FilterBarProps) {
-  const handleStateChange = (state: FilterOptions['states'][number]) => {
-    const currentStates = filters.states || [];
-    const newStates = currentStates.includes(state)
-      ? currentStates.filter((s) => s !== state)
-      : [...currentStates, state];
-    onFiltersChange({ ...filters, states: newStates });
-  };
-
   const handleLabelChange = (labelName: string) => {
     const currentLabels = filters.labels || [];
     const newLabels = currentLabels.includes(labelName)
@@ -60,7 +52,6 @@ export function FilterBar({
 
   const handleClearFilters = () => {
     onFiltersChange({
-      states: ['open'],
       labels: [],
       branches: [],
       authors: [],
@@ -69,7 +60,6 @@ export function FilterBar({
   };
 
   const activeFilterCount =
-    (filters.states?.length || 0) +
     (filters.labels?.length || 0) +
     (filters.branches?.length || 0) +
     (filters.authors?.length || 0) +
@@ -103,27 +93,6 @@ export function FilterBar({
           placeholder="Search pull requests..."
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
         />
-      </div>
-
-      {/* State Filter */}
-      <div>
-        <div className="block text-sm font-medium text-gray-700 mb-2">Status</div>
-        <div className="flex flex-wrap gap-2">
-          {(['open', 'closed', 'merged', 'draft'] as const).map((state) => (
-            <button
-              key={state}
-              type="button"
-              onClick={() => handleStateChange(state)}
-              className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                filters.states?.includes(state)
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-              }`}
-            >
-              {state.charAt(0).toUpperCase() + state.slice(1)}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Authors Filter */}

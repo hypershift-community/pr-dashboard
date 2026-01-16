@@ -7,6 +7,8 @@ import { FilterBar } from '../components/FilterBar';
 import { GroupedPRDisplay } from '../components/GroupedPRDisplay';
 import { LabelGroupSelector } from '../components/LabelGroupSelector';
 import { PRTable } from '../components/PRTable';
+import { RefreshIndicator } from '../components/RefreshIndicator';
+import { StateSelector } from '../components/StateSelector';
 import { useColumnConfig } from '../hooks/useColumnConfig';
 import { usePullRequests } from '../hooks/usePullRequests';
 import { useUrlFilters } from '../hooks/useUrlFilters';
@@ -45,15 +47,30 @@ export default function DashboardPage() {
     return [];
   });
 
-  // Parse default filters from dashboard config
-  const defaultFilters = useMemo((): Partial<FilterOptions> => {
+  // Parse default state from dashboard config
+  const defaultState = useMemo((): 'open' | 'closed' | 'merged' => {
     if (!dashboardConfig?.filter) {
-      return { states: ['open'], labels: [], authors: [], branches: [], searchQuery: '' };
+      return 'open';
     }
     const params = new URLSearchParams(dashboardConfig.filter);
-    const statesParam = params.get('states')?.split(',') || ['open'];
+    const stateParam = params.get('state') || params.get('states')?.split(',')[0] || 'open';
+    return stateParam as 'open' | 'closed' | 'merged';
+  }, [dashboardConfig]);
+
+  const [prState, setPrState] = useState<'open' | 'closed' | 'merged'>('open');
+
+  // Update prState when defaultState changes
+  useEffect(() => {
+    setPrState(defaultState);
+  }, [defaultState]);
+
+  // Parse default filters from dashboard config (without states)
+  const defaultFilters = useMemo((): Partial<FilterOptions> => {
+    if (!dashboardConfig?.filter) {
+      return { labels: [], authors: [], branches: [], searchQuery: '' };
+    }
+    const params = new URLSearchParams(dashboardConfig.filter);
     return {
-      states: statesParam as FilterOptions['states'],
       labels: params.get('labels')?.split(',').filter(Boolean) || [],
       authors: params.get('authors')?.split(',').filter(Boolean) || [],
       branches: params.get('branches')?.split(',').filter(Boolean) || [],
@@ -95,14 +112,12 @@ export default function DashboardPage() {
     // Check if URL has explicit filter params
     const params = new URLSearchParams(window.location.search);
     const hasExplicitFilters =
-      params.has('states') || params.has('labels') || params.has('authors') || params.has('branches') || params.has('search');
+      params.has('labels') || params.has('authors') || params.has('branches') || params.has('search');
 
     // Only apply dashboard defaults if no explicit URL filters
     if (!hasExplicitFilters) {
       const dashboardParams = new URLSearchParams(dashboardConfig.filter);
-      const statesParam = dashboardParams.get('states')?.split(',') || ['open'];
       setFilters({
-        states: statesParam as FilterOptions['states'],
         labels: dashboardParams.get('labels')?.split(',').filter(Boolean) || [],
         authors: dashboardParams.get('authors')?.split(',').filter(Boolean) || [],
         branches: dashboardParams.get('branches')?.split(',').filter(Boolean) || [],
@@ -153,15 +168,36 @@ export default function DashboardPage() {
     pullRequests,
     filteredPullRequests,
     isLoading: isLoadingPRs,
+    isLoadingMore,
     error: prsError,
+    fetchedCount,
+    hasMore,
+    loadMore,
+    lastUpdated,
+    refresh,
   } = usePullRequests({
     token: githubToken,
     repositories: selectedRepositories,
+    state: prState,
     filters,
     autoFetch: Boolean(githubToken && selectedRepositories.length > 0),
   });
 
   const { columns } = useColumnConfig();
+
+  // Auto-refresh on tab focus if data is stale (> 5 min)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && lastUpdated) {
+        const ageMin = (Date.now() - lastUpdated.getTime()) / 60000;
+        if (ageMin > 5) {
+          refresh();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [lastUpdated, refresh]);
 
   // Derive unique authors from all PRs
   const availableAuthors = useMemo(() => {
@@ -319,9 +355,39 @@ export default function DashboardPage() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow">
               <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Pull Requests
-                  {!isLoadingPRs && ` (${filteredPullRequests.length})`}
+                <StateSelector
+                  value={prState}
+                  onChange={setPrState}
+                  counts={{ [prState]: fetchedCount }}
+                  isLoading={isLoadingPRs}
+                />
+              </div>
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
+                  {filteredPullRequests.length !== fetchedCount ? (
+                    <>
+                      {filteredPullRequests.length} of {fetchedCount} {prState}
+                    </>
+                  ) : (
+                    <>
+                      {isLoadingPRs ? 'Loading...' : `${fetchedCount} ${prState}`}
+                    </>
+                  )}
+                  <RefreshIndicator
+                    lastUpdated={lastUpdated}
+                    isLoading={isLoadingPRs}
+                    onRefresh={refresh}
+                  />
+                  {hasMore && (
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      disabled={isLoadingMore}
+                      className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                    >
+                      {isLoadingMore ? 'Loading...' : '+ Load more'}
+                    </button>
+                  )}
                 </h2>
               </div>
 
