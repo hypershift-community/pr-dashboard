@@ -10,8 +10,9 @@ vars:
     sh: git rev-parse --short HEAD 2>/dev/null || echo "latest"
   IMAGE_TAG: '{{.IMAGE_TAG | default .GIT_SHA}}'
   IMAGE: '{{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:{{.IMAGE_TAG}}'
-  APP_NAME: 'pr-dashboard'
-  NAMESPACE: '{{.NAMESPACE | default "pr-dashboard"}}'
+  IMAGE_LATEST: '{{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest'
+  APP_NAME: '{{.IMAGE_NAME}}'
+  NAMESPACE: '{{.NAMESPACE | default "{{.APP_NAME}}"}}'
   CUSTOM_DOMAIN: '{{.CUSTOM_DOMAIN | default "pr.hypershift.dev"}}'
 
 tasks:
@@ -32,11 +33,12 @@ tasks:
       - cmd: gum style --faint "Output:"
         silent: true
       - podman build -t {{.IMAGE}} -f Containerfile .
+      - podman tag {{.IMAGE}} {{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest
       - cmd: gum style --border normal --padding "0 1" --border-foreground 10 "Build Complete"
         silent: true
       - cmd: |
           SIZE=$(podman images {{.IMAGE}} --format "{{`{{.Size}}`}}")
-          echo -e "Property,Value\nImage,{{.IMAGE}}\nSize,$SIZE\nStatus,✓ Built" | gum table --print --border rounded
+          echo -e "Property,Value\nImage,{{.IMAGE}}\nLatest,{{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest\nSize,$SIZE\nStatus,✓ Built" | gum table --print --border rounded
         silent: true
 
   push:
@@ -50,10 +52,11 @@ tasks:
       - cmd: gum style --faint "Output:"
         silent: true
       - podman push {{.IMAGE}}
+      - podman push {{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest
       - cmd: gum style --border normal --padding "0 1" --border-foreground 10 "Push Complete"
         silent: true
       - cmd: |
-          echo -e "Property,Value\nImage,{{.IMAGE}}\nRegistry,{{.IMAGE_REGISTRY}}\nStatus,✓ Pushed" | gum table --print --border rounded
+          echo -e "Property,Value\nImage,{{.IMAGE}}\nLatest,{{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest\nRegistry,{{.IMAGE_REGISTRY}}\nStatus,✓ Pushed" | gum table --print --border rounded
         silent: true
 
   dev:
@@ -158,12 +161,12 @@ tasks:
       - cmd: gum style --border normal --padding "0 1" --border-foreground 212 "Deploying Application"
         silent: true
       - cmd: |
-          gum format "○ Tagging image to imagestream..."
-          # oc tag {{.IMAGE}} {{.APP_NAME}}:latest -n {{.NAMESPACE}}
           if [ -z "{{.DEPLOYMENT_EXISTS}}" ]; then
             gum format "○ Creating new deployment..."
-            oc new-app -i {{.APP_NAME}}:latest --name={{.APP_NAME}} --allow-missing-imagestream-tags --allow-missing-images -n {{.NAMESPACE}}
+            oc new-app {{.IMAGE_LATEST}} -n {{.NAMESPACE}}
           fi
+          gum format "○ Tagging image to imagestream..."
+          oc tag {{.IMAGE}} {{.APP_NAME}}:latest -n {{.NAMESPACE}}
         silent: true
       - cmd: gum format "✓ Deployment updated"
         silent: true

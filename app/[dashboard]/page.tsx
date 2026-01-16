@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardNav } from '../components/DashboardNav';
@@ -290,7 +291,9 @@ export default function DashboardPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900">{dashboardConfig.name}</h1>
+              <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700">PR Dashboard</Link>
+              <span className="text-gray-400">/</span>
+              <span className="text-xl text-gray-600">{dashboardConfig.name}</span>
               <DashboardNav dashboards={allDashboards} currentDashboardId={dashboardId} />
             </div>
             <div className="flex items-center gap-4">

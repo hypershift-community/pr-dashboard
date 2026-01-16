@@ -248,7 +248,7 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow-sm">
           <div className="px-4 sm:px-6 lg:px-8 py-4">
-            <h1 className="text-2xl font-bold text-gray-900">PR Dashboard</h1>
+            <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700">PR Dashboard</Link>
           </div>
         </header>
 
@@ -330,7 +330,7 @@ export default function Home() {
       <header className="bg-white shadow-sm">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">PR Dashboard</h1>
+            <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700">PR Dashboard</Link>
             <div className="flex items-center gap-4">
               {hasServerToken && (
                 <span className="text-sm text-gray-500">Using server-configured token</span>
