@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Label } from '../types';
 
 interface LabelGroupSelectorProps {
@@ -66,6 +66,12 @@ export function LabelGroupSelector({
     onSelectionChange([]);
   };
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredOptions = groupingOptions.filter((option) =>
+    option.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (availableLabels.length === 0) {
     return null;
   }
@@ -85,8 +91,16 @@ export function LabelGroupSelector({
         )}
       </div>
 
+      <input
+        type="text"
+        placeholder="Search labels..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {groupingOptions.map((option) => (
+        {filteredOptions.map((option) => (
           <label
             key={option.id}
             className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"

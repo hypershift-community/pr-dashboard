@@ -157,7 +157,7 @@ export function usePullRequests({
     if (autoFetch && token && repositories.length > 0) {
       fetchPullRequests();
     }
-  }, [token, repositories, state, autoFetch, fetchPullRequests]);
+  }, [token, repositories, autoFetch, fetchPullRequests]);
 
   // Apply filters client-side (state is already filtered server-side)
   const filteredPullRequests = pullRequests
@@ -236,7 +236,7 @@ export function usePullRequests({
 
       return true;
     })
-    .sort((a, b) => b.number - a.number); // Sort by PR number descending (newest first)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); // Sort by created date descending (newest first)
 
   return {
     pullRequests,

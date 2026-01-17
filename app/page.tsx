@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { AuthorGroupSelector } from './components/AuthorGroupSelector';
 import { FilterBar } from './components/FilterBar';
 import { GroupedPRDisplay } from './components/GroupedPRDisplay';
 import { LabelGroupSelector } from './components/LabelGroupSelector';
@@ -13,6 +14,7 @@ import { useColumnConfig } from './hooks/useColumnConfig';
 import { usePullRequests } from './hooks/usePullRequests';
 import { useRepositories } from './hooks/useRepositories';
 import { useUrlFilters } from './hooks/useUrlFilters';
+import { stringToColor } from './lib/colors';
 import type { Label } from './types';
 
 interface DashboardConfig {
@@ -49,6 +51,19 @@ export default function Home() {
           return JSON.parse(saved);
         } catch (error) {
           console.error('Failed to parse saved group labels:', error);
+        }
+      }
+    }
+    return [];
+  });
+  const [groupByAuthors, setGroupByAuthors] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pr-dashboard-group-authors');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (error) {
+          console.error('Failed to parse saved group authors:', error);
         }
       }
     }
@@ -126,6 +141,13 @@ export default function Home() {
       localStorage.setItem('pr-dashboard-group-labels', JSON.stringify(groupByLabels));
     }
   }, [groupByLabels]);
+
+  // Save group authors to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pr-dashboard-group-authors', JSON.stringify(groupByAuthors));
+    }
+  }, [groupByAuthors]);
 
   // Hooks
   const {
@@ -375,23 +397,19 @@ export default function Home() {
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">
                   Configured Repositories
                 </h3>
-                <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
                   {selectedRepositories.map((repo) => (
-                    <div key={repo} className="flex items-center p-2 bg-blue-50 rounded">
-                      <svg
-                        className="w-4 h-4 text-blue-600 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span className="text-sm font-medium text-gray-900">{repo}</span>
-                    </div>
+                    <span
+                      key={repo}
+                      className="px-4 py-1.5 text-base font-medium rounded-full border-2"
+                      style={{
+                        backgroundColor: `#${stringToColor(repo)}`,
+                        color: '#ffffff',
+                        borderColor: `#${stringToColor(repo)}`,
+                      }}
+                    >
+                      {repo}
+                    </span>
                   ))}
                 </div>
                 <p className="mt-4 text-xs text-gray-500">
@@ -421,6 +439,12 @@ export default function Home() {
                   availableLabels={availableLabels}
                   selectedLabels={groupByLabels}
                   onSelectionChange={setGroupByLabels}
+                />
+
+                <AuthorGroupSelector
+                  availableAuthors={availableAuthors}
+                  selectedAuthors={groupByAuthors}
+                  onSelectionChange={setGroupByAuthors}
                 />
               </>
             )}
@@ -472,11 +496,13 @@ export default function Home() {
                     ? 'Loading pull requests...'
                     : 'Select repositories from the sidebar to view pull requests'}
                 </div>
-              ) : groupByLabels.length > 0 ? (
+              ) : groupByLabels.length > 0 || groupByAuthors.length > 0 ? (
                 <GroupedPRDisplay
                   pullRequests={filteredPullRequests}
                   groupByLabels={groupByLabels}
+                  groupByAuthors={groupByAuthors}
                   availableLabels={availableLabels}
+                  availableAuthors={availableAuthors}
                   columns={columns}
                   isLoading={isLoadingPRs}
                 />

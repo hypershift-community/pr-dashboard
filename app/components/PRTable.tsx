@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { stringToColor } from '../lib/colors';
 import type { ColumnConfig, PullRequest } from '../types';
 
 interface PRTableProps {
@@ -115,11 +116,16 @@ export function PRTable({ pullRequests, columns, isLoading }: PRTableProps) {
                       );
                     case 'repository':
                       return (
-                        <td
-                          key={column.id}
-                          className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                        >
-                          {pr.repository.fullName}
+                        <td key={column.id} className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span
+                            className="px-2 py-0.5 font-medium rounded-full"
+                            style={{
+                              backgroundColor: `#${stringToColor(pr.repository.fullName)}20`,
+                              color: `#${stringToColor(pr.repository.fullName)}`,
+                            }}
+                          >
+                            {pr.repository.fullName}
+                          </span>
                         </td>
                       );
                     case 'author':

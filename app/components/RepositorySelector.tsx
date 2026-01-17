@@ -1,5 +1,6 @@
 'use client';
 
+import { stringToColor } from '../lib/colors';
 import type { Repository } from '../types';
 
 interface RepositorySelectorProps {
@@ -66,34 +67,28 @@ export function RepositorySelector({
         </div>
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="flex flex-wrap gap-2 max-h-96 overflow-y-auto">
         {repositories.map((repo) => (
-          <label
+          <button
             key={repo.id}
-            className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
+            type="button"
+            onClick={() => handleToggleRepository(repo.fullName)}
+            className={`px-4 py-1.5 text-base font-medium rounded-full border transition-colors ${
+              selectedRepositories.includes(repo.fullName) ? 'border-2' : 'border'
+            }`}
+            style={{
+              backgroundColor: selectedRepositories.includes(repo.fullName)
+                ? `#${stringToColor(repo.fullName)}`
+                : `#${stringToColor(repo.fullName)}20`,
+              color: selectedRepositories.includes(repo.fullName)
+                ? '#ffffff'
+                : `#${stringToColor(repo.fullName)}`,
+              borderColor: `#${stringToColor(repo.fullName)}`,
+            }}
           >
-            <input
-              type="checkbox"
-              checked={selectedRepositories.includes(repo.fullName)}
-              onChange={() => handleToggleRepository(repo.fullName)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <div className="ml-3 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-900">{repo.fullName}</span>
-                {repo.isPrivate && (
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
-                    Private
-                  </span>
-                )}
-              </div>
-              {repo.openPRCount > 0 && (
-                <span className="text-xs text-gray-500">
-                  {repo.openPRCount} open PR{repo.openPRCount !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          </label>
+            {repo.fullName}
+            {repo.isPrivate && ' (Private)'}
+          </button>
         ))}
       </div>
 

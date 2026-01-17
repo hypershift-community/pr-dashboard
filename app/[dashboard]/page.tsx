@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { AuthorGroupSelector } from '../components/AuthorGroupSelector';
 import { DashboardNav } from '../components/DashboardNav';
 import { FilterBar } from '../components/FilterBar';
 import { GroupedPRDisplay } from '../components/GroupedPRDisplay';
@@ -13,6 +14,7 @@ import { StateSelector } from '../components/StateSelector';
 import { useColumnConfig } from '../hooks/useColumnConfig';
 import { usePullRequests } from '../hooks/usePullRequests';
 import { useUrlFilters } from '../hooks/useUrlFilters';
+import { stringToColor } from '../lib/colors';
 import type { FilterOptions, Label } from '../types';
 
 interface DashboardConfig {
@@ -37,6 +39,20 @@ export default function DashboardPage() {
   const [groupByLabels, setGroupByLabels] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`pr-dashboard-group-labels-${dashboardId}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return [];
+        }
+      }
+    }
+    return [];
+  });
+
+  const [groupByAuthors, setGroupByAuthors] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`pr-dashboard-group-authors-${dashboardId}`);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -186,6 +202,16 @@ export default function DashboardPage() {
       );
     }
   }, [groupByLabels, dashboardId]);
+
+  // Save group authors to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && dashboardId) {
+      localStorage.setItem(
+        `pr-dashboard-group-authors-${dashboardId}`,
+        JSON.stringify(groupByAuthors)
+      );
+    }
+  }, [groupByAuthors, dashboardId]);
 
   const {
     pullRequests,
@@ -342,7 +368,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-1 space-y-6">
             <div className="border rounded-lg p-4 bg-white">
               <h3 className="text-lg font-semibold mb-4 text-gray-900">Repositories</h3>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {allRepos.map((repo) => {
                   const isSelected = selectedRepositories.includes(repo);
                   return (
@@ -350,19 +376,18 @@ export default function DashboardPage() {
                       type="button"
                       key={repo}
                       onClick={() => handleToggleRepo(repo)}
-                      className={`flex items-center p-2 rounded w-full text-left transition-colors ${
-                        isSelected
-                          ? 'bg-blue-50 hover:bg-blue-100'
-                          : 'bg-gray-100 opacity-50 hover:opacity-75'
+                      className={`px-4 py-1.5 text-base font-medium rounded-full border transition-colors ${
+                        isSelected ? 'border-2' : 'border'
                       }`}
+                      style={{
+                        backgroundColor: isSelected
+                          ? `#${stringToColor(repo)}`
+                          : `#${stringToColor(repo)}20`,
+                        color: isSelected ? '#ffffff' : `#${stringToColor(repo)}`,
+                        borderColor: `#${stringToColor(repo)}`,
+                      }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        readOnly
-                        className="mr-2 pointer-events-none"
-                      />
-                      <span className="text-sm font-medium text-gray-900">{repo}</span>
+                      {repo}
                     </button>
                   );
                 })}
@@ -381,6 +406,12 @@ export default function DashboardPage() {
               availableLabels={availableLabels}
               selectedLabels={groupByLabels}
               onSelectionChange={setGroupByLabels}
+            />
+
+            <AuthorGroupSelector
+              availableAuthors={availableAuthors}
+              selectedAuthors={groupByAuthors}
+              onSelectionChange={setGroupByAuthors}
             />
           </div>
 
@@ -424,11 +455,13 @@ export default function DashboardPage() {
                 </h2>
               </div>
 
-              {groupByLabels.length > 0 ? (
+              {groupByLabels.length > 0 || groupByAuthors.length > 0 ? (
                 <GroupedPRDisplay
                   pullRequests={filteredPullRequests}
                   groupByLabels={groupByLabels}
+                  groupByAuthors={groupByAuthors}
                   availableLabels={availableLabels}
+                  availableAuthors={availableAuthors}
                   columns={columns}
                   isLoading={isLoadingPRs}
                 />

@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+import { useState } from 'react';
 import type { FilterOptions, Label } from '../types';
 
 interface Author {
@@ -65,6 +67,22 @@ export function FilterBar({
     (filters.authors?.length || 0) +
     (filters.searchQuery ? 1 : 0);
 
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [branchSearch, setBranchSearch] = useState('');
+  const [labelSearch, setLabelSearch] = useState('');
+
+  const filteredAuthors = availableAuthors.filter((author) =>
+    author.login.toLowerCase().includes(authorSearch.toLowerCase())
+  );
+
+  const filteredBranches = availableBranches.filter((branch) =>
+    branch.toLowerCase().includes(branchSearch.toLowerCase())
+  );
+
+  const filteredLabels = availableLabels.filter((label) =>
+    label.name.toLowerCase().includes(labelSearch.toLowerCase())
+  );
+
   return (
     <div className="bg-white border rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -99,8 +117,15 @@ export function FilterBar({
       {availableAuthors.length > 0 && (
         <div>
           <div className="block text-sm font-medium text-gray-700 mb-2">Authors</div>
+          <input
+            type="text"
+            placeholder="Search authors..."
+            value={authorSearch}
+            onChange={(e) => setAuthorSearch(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm text-gray-900 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            {availableAuthors.map((author) => (
+            {filteredAuthors.map((author) => (
               <button
                 key={author.login}
                 type="button"
@@ -111,7 +136,13 @@ export function FilterBar({
                     : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
                 }`}
               >
-                <img src={author.avatarUrl} alt={author.login} className="w-4 h-4 rounded-full" />
+                <Image
+                  src={author.avatarUrl}
+                  alt={author.login}
+                  width={16}
+                  height={16}
+                  className="rounded-full"
+                />
                 {author.login}
               </button>
             ))}
@@ -123,8 +154,15 @@ export function FilterBar({
       {availableBranches.length > 0 && (
         <div>
           <div className="block text-sm font-medium text-gray-700 mb-2">Target Branch</div>
+          <input
+            type="text"
+            placeholder="Search branches..."
+            value={branchSearch}
+            onChange={(e) => setBranchSearch(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm text-gray-900 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            {availableBranches.map((branch) => (
+            {filteredBranches.map((branch) => (
               <button
                 key={branch}
                 type="button"
@@ -146,8 +184,15 @@ export function FilterBar({
       {availableLabels.length > 0 && (
         <div>
           <div className="block text-sm font-medium text-gray-700 mb-2">Labels</div>
+          <input
+            type="text"
+            placeholder="Search labels..."
+            value={labelSearch}
+            onChange={(e) => setLabelSearch(e.target.value)}
+            className="w-full px-3 py-1.5 text-sm text-gray-900 border border-gray-300 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
           <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
-            {availableLabels.map((label) => (
+            {filteredLabels.map((label) => (
               <button
                 key={label.id}
                 type="button"
