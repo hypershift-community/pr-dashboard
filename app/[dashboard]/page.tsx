@@ -113,7 +113,10 @@ export default function DashboardPage() {
     // Check if URL has explicit filter params
     const params = new URLSearchParams(window.location.search);
     const hasExplicitFilters =
-      params.has('labels') || params.has('authors') || params.has('branches') || params.has('search');
+      params.has('labels') ||
+      params.has('authors') ||
+      params.has('branches') ||
+      params.has('search');
 
     // Only apply dashboard defaults if no explicit URL filters
     if (!hasExplicitFilters) {
@@ -146,14 +149,33 @@ export default function DashboardPage() {
     checkServerToken();
   }, []);
 
-  // Get repositories from dashboard config
-  const selectedRepositories = useMemo(() => {
+  // Get all repositories from dashboard config
+  const allRepos = useMemo(() => {
     if (!dashboardConfig?.repos) return [];
     return dashboardConfig.repos
       .split(',')
       .map((r) => r.trim())
       .filter(Boolean);
   }, [dashboardConfig]);
+
+  // Use filters.repositories if set, otherwise use all repos
+  const selectedRepositories = useMemo(() => {
+    if (filters.repositories && filters.repositories.length > 0) {
+      // Only use repos that are in allRepos (validate against config)
+      return filters.repositories.filter((r) => allRepos.includes(r));
+    }
+    return allRepos;
+  }, [filters.repositories, allRepos]);
+
+  // Toggle handler updates URL filters
+  const handleToggleRepo = (repo: string) => {
+    const newRepos = selectedRepositories.includes(repo)
+      ? selectedRepositories.filter((r) => r !== repo)
+      : [...selectedRepositories, repo];
+    // Only set repos filter if not all repos are selected
+    const reposFilter = newRepos.length === allRepos.length ? [] : newRepos;
+    setFilters({ ...filters, repositories: reposFilter });
+  };
 
   // Save group labels to localStorage
   useEffect(() => {
@@ -178,10 +200,10 @@ export default function DashboardPage() {
     refresh,
   } = usePullRequests({
     token: githubToken,
-    repositories: selectedRepositories,
+    repositories: allRepos, // Always fetch all repos, filter client-side
     state: prState,
-    filters,
-    autoFetch: Boolean(githubToken && selectedRepositories.length > 0),
+    filters: { ...filters, repositories: selectedRepositories }, // Pass selected repos for client-side filtering
+    autoFetch: Boolean(githubToken && allRepos.length > 0),
   });
 
   const { columns } = useColumnConfig();
@@ -200,10 +222,15 @@ export default function DashboardPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [lastUpdated, refresh]);
 
-  // Derive unique authors from all PRs
+  // PRs filtered by selected repos only (for deriving filter options)
+  const repoFilteredPRs = useMemo(() => {
+    return pullRequests.filter((pr) => selectedRepositories.includes(pr.repository.fullName));
+  }, [pullRequests, selectedRepositories]);
+
+  // Derive unique authors from selected repos' PRs
   const availableAuthors = useMemo(() => {
     const authorMap = new Map<string, { login: string; avatarUrl: string }>();
-    for (const pr of pullRequests) {
+    for (const pr of repoFilteredPRs) {
       if (!authorMap.has(pr.author.login)) {
         authorMap.set(pr.author.login, {
           login: pr.author.login,
@@ -212,23 +239,23 @@ export default function DashboardPage() {
       }
     }
     return Array.from(authorMap.values()).sort((a, b) => a.login.localeCompare(b.login));
-  }, [pullRequests]);
+  }, [repoFilteredPRs]);
 
-  // Derive unique target branches from all PRs
+  // Derive unique target branches from selected repos' PRs
   const availableBranches = useMemo(() => {
     const branchSet = new Set<string>();
-    for (const pr of pullRequests) {
+    for (const pr of repoFilteredPRs) {
       branchSet.add(pr.baseBranch);
     }
     return Array.from(branchSet).sort();
-  }, [pullRequests]);
+  }, [repoFilteredPRs]);
 
-  // Fetch labels when repositories change
+  // Fetch labels for all dashboard repos (not just selected)
   useEffect(() => {
-    if (githubToken && selectedRepositories.length > 0) {
+    if (githubToken && allRepos.length > 0) {
       const fetchLabels = async () => {
         try {
-          const reposParam = selectedRepositories.join(',');
+          const reposParam = allRepos.join(',');
           const headers: HeadersInit = {};
           if (githubToken !== 'server-configured') {
             headers['x-github-token'] = githubToken;
@@ -250,7 +277,7 @@ export default function DashboardPage() {
 
       fetchLabels();
     }
-  }, [githubToken, selectedRepositories]);
+  }, [githubToken, allRepos]);
 
   if (isLoadingConfig) {
     return (
@@ -291,16 +318,13 @@ export default function DashboardPage() {
         <div className="px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/" className="text-2xl font-bold text-gray-900 hover:text-gray-700">PR Dashboard</Link>
-              <span className="text-gray-400">/</span>
-              <span className="text-xl text-gray-600">{dashboardConfig.name}</span>
+              <Link
+                href="/"
+                className="text-2xl font-bold text-gray-900 hover:text-gray-700 shrink-0"
+              >
+                PR Dashboard
+              </Link>
               <DashboardNav dashboards={allDashboards} currentDashboardId={dashboardId} />
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-500">
-                {selectedRepositories.length}{' '}
-                {selectedRepositories.length === 1 ? 'repository' : 'repositories'}
-              </span>
             </div>
           </div>
         </div>
@@ -319,23 +343,29 @@ export default function DashboardPage() {
             <div className="border rounded-lg p-4 bg-white">
               <h3 className="text-lg font-semibold mb-4 text-gray-900">Repositories</h3>
               <div className="space-y-2">
-                {selectedRepositories.map((repo) => (
-                  <div key={repo} className="flex items-center p-2 bg-blue-50 rounded">
-                    <svg
-                      className="w-4 h-4 text-blue-600 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                      aria-hidden="true"
+                {allRepos.map((repo) => {
+                  const isSelected = selectedRepositories.includes(repo);
+                  return (
+                    <button
+                      type="button"
+                      key={repo}
+                      onClick={() => handleToggleRepo(repo)}
+                      className={`flex items-center p-2 rounded w-full text-left transition-colors ${
+                        isSelected
+                          ? 'bg-blue-50 hover:bg-blue-100'
+                          : 'bg-gray-100 opacity-50 hover:opacity-75'
+                      }`}
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        readOnly
+                        className="mr-2 pointer-events-none"
                       />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-900">{repo}</span>
-                  </div>
-                ))}
+                      <span className="text-sm font-medium text-gray-900">{repo}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -371,10 +401,10 @@ export default function DashboardPage() {
                     <>
                       {filteredPullRequests.length} of {fetchedCount} {prState}
                     </>
+                  ) : isLoadingPRs ? (
+                    'Loading...'
                   ) : (
-                    <>
-                      {isLoadingPRs ? 'Loading...' : `${fetchedCount} ${prState}`}
-                    </>
+                    `${fetchedCount} ${prState}`
                   )}
                   <RefreshIndicator
                     lastUpdated={lastUpdated}

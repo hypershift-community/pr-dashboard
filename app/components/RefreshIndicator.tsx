@@ -43,7 +43,11 @@ export function RefreshIndicator({ lastUpdated, isLoading, onRefresh }: RefreshI
         onClick={onRefresh}
         disabled={isLoading}
         className={`hover:text-blue-600 disabled:opacity-50 transition-colors ${getAgeColor()}`}
-        title={lastUpdated ? `Last updated: ${lastUpdated.toLocaleTimeString()}. Click to refresh.` : 'Click to refresh'}
+        title={
+          lastUpdated
+            ? `Last updated: ${lastUpdated.toLocaleTimeString()}. Click to refresh.`
+            : 'Click to refresh'
+        }
       >
         <svg
           className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`}
@@ -59,11 +63,7 @@ export function RefreshIndicator({ lastUpdated, isLoading, onRefresh }: RefreshI
           />
         </svg>
       </button>
-      {ageText && (
-        <span className={`${getAgeColor()} transition-colors`}>
-          · {ageText}
-        </span>
-      )}
+      {ageText && <span className={`${getAgeColor()} transition-colors`}>· {ageText}</span>}
     </div>
   );
 }

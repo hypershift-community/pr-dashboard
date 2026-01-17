@@ -30,7 +30,7 @@ export GITHUB_DASHBOARDS='[
   {
     "id": "dependency-bots",
     "name": "Dependency Bots",
-    "repos": "openshift/hypershift",
+    "repos": "openshift/hypershift,openshift/hypershift-oadp-plugin",
     "filter": "states=open&branches=main&authors=dependabot[bot],red-hat-konflux[bot],renovate[bot]"
   },
   {

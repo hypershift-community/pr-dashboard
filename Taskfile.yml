@@ -51,12 +51,13 @@ tasks:
         silent: true
       - cmd: gum style --faint "Output:"
         silent: true
-      - podman push {{.IMAGE}}
-      - podman push {{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest
+      - podman push {{.IMAGE}} --digestfile /tmp/image-digest.txt
+      - podman push {{.IMAGE_LATEST}}
       - cmd: gum style --border normal --padding "0 1" --border-foreground 10 "Push Complete"
         silent: true
       - cmd: |
-          echo -e "Property,Value\nImage,{{.IMAGE}}\nLatest,{{.IMAGE_REGISTRY}}/{{.IMAGE_REPO}}/{{.IMAGE_NAME}}:latest\nRegistry,{{.IMAGE_REGISTRY}}\nStatus,✓ Pushed" | gum table --print --border rounded
+          DIGEST=$(cat /tmp/image-digest.txt)
+          echo -e "Property,Value\nImage,{{.IMAGE}}\nLatest,{{.IMAGE_LATEST}}\nDigest,$DIGEST\nStatus,✓ Pushed" | gum table --print --border rounded --widths 10,75
         silent: true
 
   dev:

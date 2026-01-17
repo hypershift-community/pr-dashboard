@@ -158,7 +158,10 @@ export function PRTable({ pullRequests, columns, isLoading }: PRTableProps) {
                         >
                           <span className="text-gray-900 font-medium">
                             {pr.createdAt.toLocaleDateString()}{' '}
-                            {pr.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {pr.createdAt.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
                           </span>
                           <span className="text-gray-400 ml-1">({ageInDays}d)</span>
                         </td>
@@ -213,7 +216,10 @@ export function PRTable({ pullRequests, columns, isLoading }: PRTableProps) {
                           className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                         >
                           {pr.createdAt.toLocaleDateString()}{' '}
-                          {pr.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {pr.createdAt.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </td>
                       );
                     case 'updatedAt':
@@ -223,7 +229,10 @@ export function PRTable({ pullRequests, columns, isLoading }: PRTableProps) {
                           className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
                         >
                           {pr.updatedAt.toLocaleDateString()}{' '}
-                          {pr.updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {pr.updatedAt.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </td>
                       );
                     case 'comments':

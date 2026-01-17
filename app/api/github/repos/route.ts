@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { cache, CACHE_TTL } from '@/app/lib/cache';
+import { CACHE_TTL, cache } from '@/app/lib/cache';
 import { createGitHubClient } from '@/app/lib/github';
 import { getGitHubToken } from '@/app/lib/token';
 import { transformRepository } from '@/app/types';

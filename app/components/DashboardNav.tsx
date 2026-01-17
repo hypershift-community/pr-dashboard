@@ -22,7 +22,7 @@ export function DashboardNav({ dashboards, currentDashboardId }: DashboardNavPro
   return (
     <nav className="flex items-center gap-2">
       <span className="text-gray-400">|</span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         {dashboards.map((dashboard) => (
           <Link
             key={dashboard.id}
